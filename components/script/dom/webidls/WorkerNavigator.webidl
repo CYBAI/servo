@@ -14,4 +14,5 @@ WorkerNavigator implements NavigatorLanguage;
 [Exposed=(Worker)]
 partial interface WorkerNavigator {
   [Pref="dom.permissions.enabled"] readonly attribute Permissions permissions;
+  [Pref="dom.serviceworker.enabled", SecureContext, SameObject] readonly attribute ServiceWorkerContainer serviceWorker;
 };

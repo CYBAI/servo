@@ -9,6 +9,7 @@ use crate::dom::bindings::root::{DomRoot, MutNullableDom};
 use crate::dom::bindings::str::DOMString;
 use crate::dom::navigatorinfo;
 use crate::dom::permissions::Permissions;
+use crate::dom::serviceworkercontainer::ServiceWorkerContainer;
 use crate::dom::workerglobalscope::WorkerGlobalScope;
 use dom_struct::dom_struct;
 
@@ -17,6 +18,7 @@ use dom_struct::dom_struct;
 pub struct WorkerNavigator {
     reflector_: Reflector,
     permissions: MutNullableDom<Permissions>,
+    service_worker: MutNullableDom<ServiceWorkerContainer>,
 }
 
 impl WorkerNavigator {
@@ -24,6 +26,7 @@ impl WorkerNavigator {
         WorkerNavigator {
             reflector_: Reflector::new(),
             permissions: Default::default(),
+            service_worker: Default::default(),
         }
     }
 
@@ -81,5 +84,11 @@ impl WorkerNavigatorMethods for WorkerNavigator {
     fn Permissions(&self) -> DomRoot<Permissions> {
         self.permissions
             .or_init(|| Permissions::new(&self.global()))
+    }
+
+    // https://w3c.github.io/ServiceWorker/#navigator-service-worker-attribute
+    fn ServiceWorker(&self) -> DomRoot<ServiceWorkerContainer> {
+        self.service_worker
+            .or_init(|| ServiceWorkerContainer::new(&self.global()))
     }
 }
