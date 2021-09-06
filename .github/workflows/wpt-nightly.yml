@@ -2,7 +2,6 @@ name: Synchronize WPT Nightly
 
 on:
   pull_request:
-    branches: ["master", "github-actions-dev"]
   schedule:
     # Run this job at 00:00 everyday
     - cron: "0 0 * * *"
@@ -108,13 +107,16 @@ jobs:
           python3 -m pip install --upgrade pip virtualenv
           sudo apt update
           python3 ./mach bootstrap
+      - name: Add upstream remote
+        run: |
+          git config --local user.email "josh+wptsync@joshmatthews.net"
+          git config --local user.name "WPT Sync Bot"
+          git remote add upstream https://github.com/servo/servo.git
+          git fetch --unshallow upstream
+          # git remote add sync-fork https://servo-wpt-sync:${{ secrets.WPT_SYNC_TOKEN }}@github.com/servo-wpt-sync/servo.git
       - name: Fetch upstream changes before syncing
         run: |
           ./etc/ci/update-wpt-checkout fetch-upstream-changes
-      - name: Add upstream remote
-        run: |
-          git remote add sync-fork https://servo-wpt-sync:${{ secrets.WPT_SYNC_TOKEN }}@github.com/servo-wpt-sync/servo.git
-          git fetch --unshallow sync-fork
       - name: Run WPT Update
         env:
           MAX_CHUNK_ID: 20
@@ -123,5 +125,5 @@ jobs:
           export CURRENT_DATE=$(date +"%d-%m-%Y")
           echo $CURRENT_DATE
           ./etc/ci/wpt-nightly.sh update-expectations
-          git push -f sync-fork "wpt_update:wpt_update_${CURRENT_DATE}"
+          git push -f origin "wpt_update:wpt_update_${CURRENT_DATE}"
           ./etc/ci/wpt-nightly.sh open-pr

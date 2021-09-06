@@ -10,14 +10,8 @@ set -o pipefail
 
 REMOTE_NAME=sync-fork
 
-# CURRENT_DATE=$(date +"%d-%m-%Y")
 BRANCH_NAME="wpt_update"
 REMOTE_BRANCH_NAME="wpt_update_${CURRENT_DATE}"
-
-export GIT_AUTHOR_NAME="WPT Sync Bot"
-export GIT_AUTHOR_EMAIL="josh+wptsync@joshmatthews.net"
-export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}"
-export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}"
 
 # Using an existing log file, update the expected test results and amend the
 # last commit with the new results.
@@ -48,13 +42,6 @@ function unsafe_open_pull_request() {
         return 1
     fi
 
-    # Push the changes to a remote branch owned by the bot.
-    # AUTH="${WPT_SYNC_USER}:${WPT_SYNC_TOKEN}"
-    # UPSTREAM="https://${AUTH}@github.com/${WPT_SYNC_USER}/servo.git"
-    # git remote add "${REMOTE_NAME}" "${UPSTREAM}" || return 2
-    # git push -f "${REMOTE_NAME}" \
-    #     "${BRANCH_NAME}:${REMOTE_BRANCH_NAME}" &>/dev/null || return 3
-
     # Prepare the pull request metadata.
     BODY="Automated downstream sync of changes from upstream as of "
     BODY+="${CURRENT_DATE}.\n"
@@ -75,6 +62,8 @@ EOF
                             -H "Content-Type: application/json" \
                             --data @prdata.json \
                             https://api.github.com/repos/servo/servo/pulls) || return 5
+
+    echo "${OPEN_PR_RESPONSE}"
 
     echo "${OPEN_PR_RESPONSE}" | \
         jq '.review_comments_url' | \
