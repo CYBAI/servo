@@ -2972,7 +2972,7 @@ dependencies = [
  "num-iter",
  "num-rational 0.3.0",
  "num-traits",
- "png 0.16.6",
+ "png 0.16.8",
 ]
 
 [[package]]
@@ -4895,9 +4895,9 @@ dependencies = [
 
 [[package]]
 name = "png"
-version = "0.16.6"
+version = "0.16.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c150bf7479fafe3dd8740dbe48cc33b2a3efb7b0fe3483aced8bbc39f6d0238d"
+checksum = "3c3287920cb847dee3de33d301c463fba14dda99db24214ddf93f83d3021f4c6"
 dependencies = [
  "bitflags",
  "crc32fast",
@@ -5138,7 +5138,7 @@ dependencies = [
  "font-kit",
  "lyon_geom 0.15.0",
  "pathfinder_geometry",
- "png 0.16.6",
+ "png 0.16.8",
  "sw-composite",
  "typed-arena",
 ]
