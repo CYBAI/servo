@@ -1256,6 +1256,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cty"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
+
+[[package]]
 name = "d3d12"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2119,7 +2125,7 @@ dependencies = [
  "log",
  "parking_lot 0.11.0",
  "range-alloc",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smallvec 1.8.0",
  "spirv_cross",
  "thunderdome",
@@ -2141,7 +2147,7 @@ dependencies = [
  "gfx-hal",
  "log",
  "range-alloc",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smallvec 1.8.0",
  "spirv_cross",
  "winapi",
@@ -2155,7 +2161,7 @@ checksum = "2085227c12b78f6657a900c829f2d0deb46a9be3eaf86844fde263cdc218f77c"
 dependencies = [
  "gfx-hal",
  "log",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
 ]
 
 [[package]]
@@ -2178,7 +2184,7 @@ dependencies = [
  "objc",
  "parking_lot 0.11.0",
  "range-alloc",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smallvec 1.8.0",
  "spirv_cross",
  "storage-map",
@@ -2199,7 +2205,7 @@ dependencies = [
  "lazy_static",
  "log",
  "objc",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smallvec 1.8.0",
  "winapi",
 ]
@@ -2223,7 +2229,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18d0754f5b7a43915fd7466883b2d1bb0800d7cc4609178d0b27bf143b9e5123"
 dependencies = [
  "bitflags",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
 ]
 
 [[package]]
@@ -5145,11 +5151,21 @@ dependencies = [
 
 [[package]]
 name = "raw-window-handle"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
+checksum = "e28f55143d0548dad60bb4fbdc835a3d7ac6acc3324506450c5fdd6e42903a76"
 dependencies = [
  "libc",
+ "raw-window-handle 0.4.3",
+]
+
+[[package]]
+name = "raw-window-handle"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b800beb9b6e7d2df1fe337c9e3d04e3af22a124460fb4c30fcc22c9117cefb41"
+dependencies = [
+ "cty",
 ]
 
 [[package]]
@@ -6434,7 +6450,7 @@ dependencies = [
  "metal 0.18.0",
  "objc",
  "parking_lot 0.10.2",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "wayland-sys 0.24.1",
  "winapi",
  "winit",
@@ -7612,7 +7628,7 @@ dependencies = [
  "objc",
  "parking_lot 0.11.0",
  "percent-encoding",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smithay-client-toolkit",
  "wayland-client",
  "winapi",
