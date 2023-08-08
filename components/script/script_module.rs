@@ -153,7 +153,7 @@ impl ModuleIdentity {
         match self {
             ModuleIdentity::ModuleUrl(url) => {
                 let module_map = global.get_module_map().borrow();
-                module_map.get(&url.clone()).unwrap().clone()
+                module_map.get(url).unwrap().clone()
             },
             ModuleIdentity::ScriptId(script_id) => {
                 let inline_module_map = global.get_inline_module_map().borrow();
@@ -281,8 +281,8 @@ impl ModuleTree {
         self.incomplete_fetch_urls.borrow_mut().insert(dependency);
     }
 
-    pub fn remove_incomplete_fetch_url(&self, dependency: ServoUrl) {
-        self.incomplete_fetch_urls.borrow_mut().remove(&dependency);
+    pub fn remove_incomplete_fetch_url(&self, dependency: &ServoUrl) {
+        self.incomplete_fetch_urls.borrow_mut().remove(dependency);
     }
 
     /// recursively checks if all of the transitive descendants are
@@ -297,7 +297,7 @@ impl ModuleTree {
         let descendant_urls = module_tree.descendant_urls.borrow();
 
         for descendant_url in descendant_urls.iter() {
-            match module_map.get(&descendant_url.clone()) {
+            match module_map.get(descendant_url) {
                 None => return false,
                 Some(descendant_module) => {
                     if discovered_urls.contains(&descendant_module.url) {
@@ -336,9 +336,9 @@ impl ModuleTree {
     // Thus, we will always `resolve` it and no need to register a callback for `reject`
     fn append_handler(
         &self,
-        owner: ModuleOwner,
+        owner: &ModuleOwner,
         module_identity: ModuleIdentity,
-        fetch_options: ScriptFetchOptions,
+        fetch_options: &ScriptFetchOptions,
     ) {
         let this = owner.clone();
         let identity = module_identity.clone();
@@ -371,7 +371,7 @@ impl ModuleTree {
 
     fn append_dynamic_module_handler(
         &self,
-        owner: ModuleOwner,
+        owner: &ModuleOwner,
         module_identity: ModuleIdentity,
         dynamic_module: RootedTraceableBox<DynamicModule>,
     ) {
@@ -421,10 +421,10 @@ impl ModuleTree {
     fn compile_module_script(
         &self,
         global: &GlobalScope,
-        owner: ModuleOwner,
+        owner: &ModuleOwner,
         module_script_text: Rc<DOMString>,
-        url: ServoUrl,
-        options: ScriptFetchOptions,
+        url: &ServoUrl,
+        options: &ScriptFetchOptions,
     ) -> Result<ModuleObject, RethrowError> {
         let cx = GlobalScope::get_cx();
         let _ac = JSAutoRealm::new(*cx, *global.reflector().get_jsobject());
@@ -450,7 +450,11 @@ impl ModuleTree {
                 ))));
             }
 
-            let module_script_data = Rc::new(ModuleScript::new(url.clone(), options, Some(owner)));
+            let module_script_data = Rc::new(ModuleScript::new(
+                url.clone(),
+                options.clone(),
+                Some(owner.clone()),
+            ));
 
             SetModulePrivate(
                 module_script.get(),
@@ -462,7 +466,7 @@ impl ModuleTree {
             self.resolve_requested_module_specifiers(
                 &global,
                 module_script.handle().into_handle(),
-                url.clone(),
+                &url,
             )
             .map(|_| ModuleObject(Heap::boxed(*module_script)))
         }
@@ -561,7 +565,7 @@ impl ModuleTree {
         &self,
         global: &GlobalScope,
         module_object: HandleObject,
-        base_url: ServoUrl,
+        base_url: &ServoUrl,
     ) -> Result<IndexSet<ServoUrl>, RethrowError> {
         let cx = GlobalScope::get_cx();
         let _ac = JSAutoRealm::new(*cx, *global.reflector().get_jsobject());
@@ -601,7 +605,7 @@ impl ModuleTree {
 
                 let url = ModuleTree::resolve_module_specifier(
                     *cx,
-                    &base_url,
+                    base_url,
                     specifier.handle().into_handle(),
                 );
 
@@ -677,7 +681,7 @@ impl ModuleTree {
         for descendant_module in descendant_urls
             .iter()
             // 7.
-            .filter_map(|url| module_map.get(&url.clone()))
+            .filter_map(|url| module_map.get(url))
         {
             // 8-2.
             if discovered_urls.contains(&descendant_module.url) {
@@ -713,11 +717,11 @@ impl ModuleTree {
     fn fetch_module_descendants(
         &self,
         owner: &ModuleOwner,
-        destination: Destination,
+        destination: &Destination,
         options: &ScriptFetchOptions,
         parent_identity: ModuleIdentity,
     ) {
-        debug!("Start to load dependencies of {}", self.url.clone());
+        debug!("Start to load dependencies of {}", self.url);
 
         let global = owner.global();
 
@@ -731,7 +735,7 @@ impl ModuleTree {
                     self.set_status(ModuleStatus::Finished);
                     debug!(
                         "Module {} doesn't have module record but tried to load descendants.",
-                        self.url.clone()
+                        self.url
                     );
                     return;
                 },
@@ -739,7 +743,7 @@ impl ModuleTree {
                 Some(raw_record) => self.resolve_requested_module_specifiers(
                     &global,
                     raw_record.handle(),
-                    self.url.clone(),
+                    &self.url,
                 ),
             }
         };
@@ -747,18 +751,14 @@ impl ModuleTree {
         match specifier_urls {
             // Step 3.
             Ok(valid_specifier_urls) if valid_specifier_urls.len() == 0 => {
-                debug!("Module {} doesn't have any dependencies.", self.url.clone());
+                debug!("Module {} doesn't have any dependencies.", self.url);
                 self.advance_finished_and_link(&global);
             },
             Ok(valid_specifier_urls) => {
-                self.descendant_urls
-                    .borrow_mut()
-                    .extend(valid_specifier_urls.clone());
-
                 let mut urls = IndexSet::new();
                 let mut visited_urls = self.visited_urls.borrow_mut();
 
-                for parsed_url in valid_specifier_urls {
+                for parsed_url in &valid_specifier_urls {
                     // Step 5-3.
                     if !visited_urls.contains(&parsed_url) {
                         // Step 5-3-1.
@@ -770,11 +770,15 @@ impl ModuleTree {
                     }
                 }
 
+                self.descendant_urls
+                    .borrow_mut()
+                    .extend(valid_specifier_urls);
+
                 // Step 3.
                 if urls.len() == 0 {
                     debug!(
                         "After checking with visited urls, module {} doesn't have dependencies to load.",
-                        self.url.clone()
+                        self.url
                     );
                     self.advance_finished_and_link(&global);
                     return;
@@ -791,8 +795,8 @@ impl ModuleTree {
 
                     // Step 2.
                     fetch_single_module_script(
-                        owner.clone(),
-                        url.clone(),
+                        &owner,
+                        &url,
                         visited_urls.clone(),
                         destination.clone(),
                         options,
@@ -820,7 +824,7 @@ impl ModuleTree {
 
         self.set_status(ModuleStatus::Finished);
 
-        debug!("Going to advance and finish for: {}", self.url.clone());
+        debug!("Going to advance and finish for: {}", self.url);
 
         {
             // Notify parents of this module to finish
@@ -837,7 +841,7 @@ impl ModuleTree {
                 };
 
                 if incomplete_count_before_remove > 0 {
-                    parent_tree.remove_incomplete_fetch_url(self.url.clone());
+                    parent_tree.remove_incomplete_fetch_url(&self.url);
                     parent_tree.advance_finished_and_link(&global);
                 }
             }
@@ -1000,7 +1004,7 @@ impl ModuleOwner {
                     .execute_module(&global, record, rval.handle_mut().into())
                     .err();
 
-                if let Some(exception) = evaluated.clone() {
+                if let Some(exception) = evaluated {
                     module_tree.set_rethrow_error(exception);
                 }
             }
@@ -1155,15 +1159,15 @@ impl FetchResponseListener for ModuleContext {
 
         let module_tree = {
             let module_map = global.get_module_map().borrow();
-            module_map.get(&self.url.clone()).unwrap().clone()
+            module_map.get(&self.url).unwrap().clone()
         };
 
-        module_tree.remove_incomplete_fetch_url(self.url.clone());
+        module_tree.remove_incomplete_fetch_url(&self.url);
 
         // Step 12.
         match load {
             Err(err) => {
-                error!("Failed to fetch {} with error {:?}", self.url.clone(), err);
+                error!("Failed to fetch {} with error {:?}", self.url, err);
                 module_tree.set_network_error(err);
                 module_tree.advance_finished_and_link(&global);
             },
@@ -1172,10 +1176,10 @@ impl FetchResponseListener for ModuleContext {
 
                 let compiled_module = module_tree.compile_module_script(
                     &global,
-                    self.owner.clone(),
+                    &self.owner,
                     resp_mod_script.text(),
-                    self.url.clone(),
-                    self.options.clone(),
+                    &self.url,
+                    &self.options,
                 );
 
                 match compiled_module {
@@ -1188,7 +1192,7 @@ impl FetchResponseListener for ModuleContext {
 
                         module_tree.fetch_module_descendants(
                             &self.owner,
-                            self.destination.clone(),
+                            &self.destination,
                             &self.options,
                             ModuleIdentity::ModuleUrl(self.url.clone()),
                         );
@@ -1400,8 +1404,8 @@ fn fetch_an_import_module_script_graph(
     visited_urls.insert(url.clone());
 
     fetch_single_module_script(
-        owner,
-        url,
+        &owner,
+        &url,
         visited_urls,
         Destination::Script,
         options,
@@ -1502,7 +1506,7 @@ unsafe extern "C" fn HostPopulateImportMeta(
 /// https://html.spec.whatwg.org/multipage/#fetch-a-module-script-tree
 pub(crate) fn fetch_external_module_script(
     owner: ModuleOwner,
-    url: ServoUrl,
+    url: &ServoUrl,
     destination: Destination,
     options: ScriptFetchOptions,
 ) {
@@ -1511,8 +1515,8 @@ pub(crate) fn fetch_external_module_script(
 
     // Step 1.
     fetch_single_module_script(
-        owner,
-        url,
+        &owner,
+        &url,
         visited_urls,
         destination,
         options,
@@ -1572,8 +1576,8 @@ struct DynamicModule {
 
 /// https://html.spec.whatwg.org/multipage/#fetch-a-single-module-script
 fn fetch_single_module_script(
-    owner: ModuleOwner,
-    url: ServoUrl,
+    owner: &ModuleOwner,
+    url: &ServoUrl,
     visited_urls: HashSet<ServoUrl>,
     destination: Destination,
     options: ScriptFetchOptions,
@@ -1588,21 +1592,21 @@ fn fetch_single_module_script(
 
         debug!("Start to fetch {}", url);
 
-        if let Some(module_tree) = module_map.get(&url.clone()) {
+        if let Some(module_tree) = module_map.get(&url) {
             let status = module_tree.get_status();
 
             debug!("Meet a fetched url {} and its status is {:?}", url, status);
 
             match dynamic_module {
                 Some(module) => module_tree.append_dynamic_module_handler(
-                    owner.clone(),
+                    owner,
                     ModuleIdentity::ModuleUrl(url.clone()),
                     module,
                 ),
                 None if top_level_module_fetch => module_tree.append_handler(
-                    owner.clone(),
+                    owner,
                     ModuleIdentity::ModuleUrl(url.clone()),
-                    options,
+                    &options,
                 ),
                 // do nothing if it's neither a dynamic module nor a top level module
                 None => {},
@@ -1635,15 +1639,13 @@ fn fetch_single_module_script(
 
     match dynamic_module {
         Some(module) => module_tree.append_dynamic_module_handler(
-            owner.clone(),
+            &owner,
             ModuleIdentity::ModuleUrl(url.clone()),
             module,
         ),
-        None if top_level_module_fetch => module_tree.append_handler(
-            owner.clone(),
-            ModuleIdentity::ModuleUrl(url.clone()),
-            options.clone(),
-        ),
+        None if top_level_module_fetch => {
+            module_tree.append_handler(&owner, ModuleIdentity::ModuleUrl(url.clone()), &options)
+        },
         // do nothing if it's neither a dynamic module nor a top level module
         None => {},
     }
@@ -1658,7 +1660,7 @@ fn fetch_single_module_script(
     global.set_module_map(url.clone(), module_tree);
 
     // Step 5-6.
-    let mode = match destination.clone() {
+    let mode = match &destination {
         Destination::Worker | Destination::SharedWorker if top_level_module_fetch => {
             RequestMode::SameOrigin
         },
@@ -1680,7 +1682,7 @@ fn fetch_single_module_script(
         .mode(mode);
 
     let context = Arc::new(Mutex::new(ModuleContext {
-        owner,
+        owner: owner.clone(),
         data: vec![],
         metadata: None,
         url: url.clone(),
@@ -1708,7 +1710,7 @@ fn fetch_single_module_script(
     );
 
     match document {
-        Some(doc) => doc.fetch_async(LoadType::Script(url), request, action_sender),
+        Some(doc) => doc.fetch_async(LoadType::Script(url.clone()), request, action_sender),
         None => {
             let _ = global
                 .resource_threads()
@@ -1727,7 +1729,7 @@ fn fetch_single_module_script(
 pub(crate) fn fetch_inline_module_script(
     owner: ModuleOwner,
     module_script_text: Rc<DOMString>,
-    url: ServoUrl,
+    url: &ServoUrl,
     script_id: ScriptId,
     options: ScriptFetchOptions,
 ) {
@@ -1735,20 +1737,15 @@ pub(crate) fn fetch_inline_module_script(
     let is_external = false;
     let module_tree = ModuleTree::new(url.clone(), is_external, HashSet::new());
 
-    let compiled_module = module_tree.compile_module_script(
-        &global,
-        owner.clone(),
-        module_script_text,
-        url.clone(),
-        options.clone(),
-    );
+    let compiled_module =
+        module_tree.compile_module_script(&global, &owner, module_script_text, url, &options);
 
     match compiled_module {
         Ok(record) => {
             module_tree.append_handler(
-                owner.clone(),
+                &owner,
                 ModuleIdentity::ScriptId(script_id.clone()),
-                options.clone(),
+                &options,
             );
             module_tree.set_record(record);
 
@@ -1765,7 +1762,7 @@ pub(crate) fn fetch_inline_module_script(
 
             module_tree.fetch_module_descendants(
                 &owner,
-                Destination::Script,
+                &Destination::Script,
                 &options,
                 ModuleIdentity::ScriptId(script_id),
             );
